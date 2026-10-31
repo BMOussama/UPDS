@@ -21,6 +21,7 @@ typedef struct State
   bool duplicated;
   bool pushed;
   bool acc;
+  bool final;      /* final state of the P-automaton */
 
 
 } State;
@@ -43,5 +44,6 @@ void PrintListState(ListState* liststate);
 ListState* InsertState(State* state);
 
 int IsTheSameState(State* s1, State* s2);
+void SetFinal(State* state, bool final);
 
 #endif

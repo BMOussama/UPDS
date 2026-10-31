@@ -3,10 +3,11 @@
 
 #include "Fa.h"
 #include "Upds.h"
+#include "Saturation.h"
 
-Fa * PostStar(Fa * fa , Upds * upds);
+/* post*(L(fa)) for the UPDS: returns a new automaton (see Saturation.h).
+ * Prints a warning on stderr if widening was needed (over-approximation).
+ * The 2019 implementation of the report's rules is kept in legacy/Post_2019.c. */
+Fa* PostStar(Fa* fa, Upds* upds);
 
-Fa* PopCase(Fa* postFa,Rule* rule, Transition* t, ListTransition* pred, ListTransition* acc);
-Fa* SwitchCase(Fa* postFa,Rule* rule, Transition* t, ListTransition* pred, ListTransition* acc,Upds* upds);
-Fa* PushCase(Fa* postFa,Rule* rule, Transition* t, ListTransition* pred, ListTransition* acc);
 #endif

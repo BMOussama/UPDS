@@ -1,0 +1,8 @@
+*.o
+main
+paper_example
+pre_example
+run_case
+stale_example
+__pycache__/
+-fsanitize=address

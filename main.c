@@ -14,6 +14,7 @@ int main () {
 
 	StateName* stateName1 = CreateStateName("q","");
 	State* state1 = CreateState(stateName1,false,false,false);
+	SetFinal(state1,true);
 
 	StateName* stateName2 = CreateStateName("q1","");
 	State* state2 = CreateState(stateName2,false,false,false);

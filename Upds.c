@@ -13,19 +13,43 @@ Rule* CreateRule(State* from_state,char* from_stack, State* to_state,char* to_st
   else l -> to_stack1 = NULL;
   if(to_stack2) l -> to_stack2 = to_stack2;
   else l -> to_stack2 = NULL;
+  l -> read_offset = 0;
+  l -> read_letter = NULL;
   return l;
 }
+
+void RuleSetRead(Rule* rule, int j, char* letter){
+  rule->read_offset = j;
+  rule->read_letter = letter;
+}
+
+int MaxReadOffset(Upds* upds){
+  ListRule* r;
+  int m = 0;
+  for(r = upds->rules; r; r = r->next) if(r->rule->read_offset > m) m = r->rule->read_offset;
+  return m;
+}
+
+int HasReadRules(Upds* upds){ return MaxReadOffset(upds) > 0; }
 
 Upds* CreateUpds(ListRule* rules){
   Upds* upds = (Upds*) malloc(sizeof(Upds));
   upds -> rules = rules;
+  upds -> alphabet = NULL;
+  upds -> nalphabet = 0;
   return upds;
 }
 
+void UpdsSetAlphabet(Upds* upds, char** letters, int n){
+  upds->alphabet = letters;
+  upds->nalphabet = n;
+}
+
 ListRule* CreateListRule(Rule* r){
-  ListRule* list = (ListRule*) malloc(sizeof(ListRule*));
+  ListRule* list = (ListRule*) malloc(sizeof(ListRule));
   list -> rule = r;
   list -> next = NULL;
+  return list;
 }
 
 void AddRule(ListRule* list , Rule* r){
@@ -99,6 +123,9 @@ void DeleteRule(ListRule*rules,Rule* rule){
 }
 
 int IsTheSameRule(Rule* r1, Rule* r2){
+  /* rules with different read conditions are different rules */
+  if(r1->read_offset != r2->read_offset) return 0;
+  if(r1->read_offset && strcmp(r1->read_letter, r2->read_letter)) return 0;
   if(IsTheSameState(r1->from_state,r2->from_state) && IsTheSameState(r1->to_state,r2->to_state) &&
   !strcmp(r1->from_stack,r2->from_stack) ){
     if(r1->to_stack1 == NULL && r2->to_stack1==NULL){
@@ -128,6 +155,7 @@ int IsTheSameRule(Rule* r1, Rule* r2){
 Rule * GetFirstRule(ListRule* r1){
   if(r1)
     return r1->rule;
+  return NULL;
 }
 
 int IsPopRule(Rule* r){
@@ -182,7 +210,7 @@ ListRule* ExistPushRule(ListRule* r,char* from_stack){
     }
     rules=rules->next;
   }
-  if(!list1) return NULL;
+  return list1;
 }
 
 ListRule* ExistSwitch(ListRule* list, char* from_stack){
@@ -208,7 +236,7 @@ ListRule* ExistSwitch(ListRule* list, char* from_stack){
     rules=rules->next;
   }
 
-  if(!list1) return NULL;
+  return list1;
 }
 
 ListRule* ConcatRules(ListRule* list1, ListRule* list2){

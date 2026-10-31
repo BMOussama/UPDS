@@ -103,6 +103,7 @@ ListTransition* CreateListTransition(Transition* T){
   ListTransition* l = (ListTransition*) malloc(sizeof(ListTransition));
   l -> next = NULL;
   l -> transition = T;
+  return l;
 }
 
 void AddToListTransition(ListTransition* list, Transition* t){

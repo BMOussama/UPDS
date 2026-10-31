@@ -14,10 +14,31 @@ Fa* CreateFa(ListTransition* ListTransition, State* initial){
 }
 
 void PrintFa(Fa* f){
+  ListTransition* l;
+  ListTransition* seen = NULL;   /* one transition per final state already printed */
   printf("---Initial state--- \n");
   PrintState(f->initial);
   printf("\n---Transitions list---\n");
   PrintListTransition(f-> listTransition);
+  printf("---Final states---\n");
+  for(l = f->listTransition; l; l = l->next){
+    State* st[2];
+    int i;
+    st[0] = l->transition->from; st[1] = l->transition->to;
+    for(i = 0; i < 2; i++){
+      ListTransition* x;
+      int found = 0;
+      if(!st[i]->final) continue;
+      for(x = seen; x; x = x->next) if(x->transition->from == st[i]) found = 1;
+      if(!found){
+        ListTransition* node = CreateListTransition(CreateTransition(st[i], st[i], "", false));
+        node->next = seen; seen = node;
+        printf("FINAL ");
+        PrintState(st[i]);
+        printf("\n");
+      }
+    }
+  }
 }
 
 void FaInsert(Fa* fa,Transition* T){

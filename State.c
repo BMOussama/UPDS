@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "State.h"
 #include <stdbool.h>
 
@@ -9,6 +10,7 @@ State* CreateState(StateName* name,bool duplicated, bool pushed, bool acc){
     state->duplicated = duplicated;
     state->pushed = pushed;
     state->acc = acc;
+    state->final = false;
     return state;
 }
 
@@ -24,6 +26,7 @@ ListState* InsertState(State* state){
   ListState* s= (ListState*) malloc(sizeof(ListState));
   s-> next = NULL;
   s-> state = state;
+  return s;
 }
 
 
@@ -60,4 +63,8 @@ int IsTheSameState(State* s1, State* s2){
   if ( !strcmp(s1->name->name ,s2->name->name) && !strcmp(s1->name->fromAlphabet ,s2->name->fromAlphabet)
   && (s1->duplicated ==s2->duplicated) && (s1->pushed ==s2->pushed) ) return 1;
   return 0;
+}
+
+void SetFinal(State* state, bool final){
+  state->final = final;
 }
