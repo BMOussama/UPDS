@@ -63,6 +63,8 @@ until nothing changes.
 |---|---|
 | `Saturation.c/.h` | **the corrected post\* / pre\* saturation** (`SaturatePost`, `SaturatePre`) |
 | `Window.c/.h` | **bounded-window model**, always regular and computable (`WindowPostStar`, `WindowPreStar`) |
+| `Ltl.c/.h`, `Ctl.c/.h` | **LTL and CTL model checking** on the window model (`LtlCheck`, `CtlCheck`) |
+| `Mc.c`, `McInternal.h` | shared by both: formula parser, saturation engine with Büchi flags, automata |
 | `Post.c/.h`, `Pre.c/.h` | `PostStar(fa, upds)`, `PreStar(fa, upds)`: same, with a warning when widening was used |
 | `State.c/.h` | automaton states (`SetFinal` marks final states) |
 | `Transition.c/.h` | transitions; `lower = true` means `(ε,γ)`, `false` means `(γ,ε)` |
@@ -82,6 +84,7 @@ make            # builds the demo ./main
 make test       # the report's examples, checked by brute force
 make fuzz       # random testing (N=100 SEED=2 MODE=post|pre|both)
 make wfuzz      # random testing of the window model (K=2 = window size)
+make mcfuzz     # random testing of LTL / CTL model checking (N=200 SEED=1)
 make clean      # removes object files
 ```
 
@@ -188,6 +191,53 @@ Tests (`make wfuzz`, `tests/fuzz_window.py`, under AddressSanitizer): an indepen
 the window semantics, and the brute-force oracle of the full UPDS. On 600 post\* cases (k = 0 to 4) and 110
 pre\* cases (k = 1 to 3), then 400 post\* and 30 pre\* cases with read rules (k = auto and 1 to 3): exact
 for the window model and sound for the full UPDS in **every** case.
+
+## LTL and CTL model checking
+
+`LtlCheck(fa, upds, k, formula)` and `CtlCheck(fa, upds, k, formula)` check a formula on every run /
+from every configuration of `L(fa)`, in the window model with a window of `k` letters (`WINDOW_AUTO`: the
+largest read offset of the rules and of the formula). They return 1 (holds), 0 (violated), -1 (syntax error).
+
+```c
+LtlCheck(init, upds, WINDOW_AUTO, "G !at.bad");               /* 0 for the buggy stale_example */
+LtlCheck(init, upds, WINDOW_AUTO, "G (at.g0 -> up1.v)");
+CtlCheck(init, upds, WINDOW_AUTO, "AG (at.g0 -> AX at.bad)");
+CtlCheck(init, upds, 2, "A[!at.g0 U at.m1] & AG EF (at.ok | at.bad)");
+```
+
+Atoms: `at.X` (top of the lower stack is `X`), `at.end` (lower stack empty), `upJ.x` (the J-th upper
+letter, `[esp-4J]`, is `x`), `true`, `false`. LTL: `! & | -> X F G U R`. CTL: `! & | -> EX AX EF AF EG AG
+E[f U g] A[f U g]`. Runs are infinite: a configuration where no rule applies, or the empty lower stack,
+repeats forever.
+
+**How.** The window model is an ordinary pushdown system (one control state per window), with a bottom
+letter under the lower stack; all atoms then depend only on the control state and the top letter.
+
+- *LTL* (`Ltl.c`): the negation is translated into a Büchi automaton (Gerth-Peled-Vardi-Wolper tableau,
+  then degeneralization); in the product with the window system, pop summaries carry a flag "an accepting
+  state was visited", the repeating heads are found as strongly connected components of the head graph,
+  and the formula is violated iff an initial configuration is in pre\*(repeating heads) (Bouajjani,
+  Esparza, Maler; Schwoon).
+- *CTL* (`Ctl.c`): every subformula becomes a finite automaton over configurations. `EX` is one step
+  back; `E[f U g]` and `EG f` are pre\* computations restricted to the configurations satisfying `f`. As
+  `f` may depend on the whole stack, each stack letter is annotated with the state of a deterministic
+  bottom-up automaton for `f` (regular valuations, Esparza-Kučera-Schwoon), then the annotations are
+  projected away. Negation by subset construction; `A` operators by duality.
+
+**What the answers mean.** The window model over-approximates the UPDS: a read below the window may
+succeed or fail (the run may also block there).
+- LTL: an upper letter below the window may be any letter at each step. So **"holds" is valid for the full
+  UPDS**; "violated" is exact for the window model.
+- CTL mixes path quantifiers, so there is no one-sided guarantee: the answer is exact for the window model
+  (where an atom `upJ.x` whose letter is below the window is false), and exact for the full UPDS when no
+  upper stack ever leaves the window (choose `k` large enough, e.g. `k = 2` in `stale_example`).
+
+**Tests.** `tests/stale_example.c` checks 8 LTL and 10 CTL properties on the buggy and fixed programs
+(k = auto and 2). `make mcfuzz` (`tests/fuzz_mc.py`) compares with an independent oracle: explicit
+exploration of the window model, a Vardi-Wolper automaton (closure-based, not the tableau of the
+library) for LTL, CTL by fixpoints. On 1250 random cases (k = auto, 0 to 3, read rules, 6 LTL + 6 CTL
+formulas each, about 12 000 checks, under AddressSanitizer/UBSan): no difference. The oracle detects
+deliberate bugs (ignoring Büchi acceptance, no stuttering, a lost summary flag).
 
 ## What was wrong with the 2019 rules
 

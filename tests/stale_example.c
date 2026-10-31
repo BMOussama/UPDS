@@ -21,6 +21,8 @@
 #include "Fa.h"
 #include "Window.h"
 #include "Check.h"
+#include "Ltl.h"
+#include "Ctl.h"
 
 static char* G[] = { "m0", "m1", "f0", "f1", "v", "z", "g0", "ok", "bad" };
 #define NG 9
@@ -60,8 +62,25 @@ static Fa* AtPoint(char* top){
   return CreateFa(l, p);
 }
 
+static const char* LTL[] = {
+  "G !at.bad",                      /* the property */
+  "F at.ok",                        /* g takes its normal branch */
+  "G (at.g0 -> up1.v)",             /* when g runs, [esp-4] still holds f's local */
+  "F at.end",                       /* the program ends (no: ok / bad block, i.e. repeat forever) */
+  "at.m0 & X at.f0 & X X at.f1",
+  "!at.g0 U at.g0",
+  "F G (at.ok | at.bad)",
+  "G F at.f0"
+};
+static const char* CTL[] = {
+  "AG !at.bad", "EF at.bad", "AF at.ok", "EF at.ok", "AG (at.g0 -> AX at.bad)",
+  "AG (at.g0 -> up1.v)", "A[!at.g0 U at.m1]", "AG EF (at.ok | at.bad)", "EG !at.bad", "AX AX at.f1"
+};
+#define NLTL (int)(sizeof LTL / sizeof *LTL)
+#define NCTL (int)(sizeof CTL / sizeof *CTL)
+
 int main(void){
-  int fixed;
+  int fixed, i, k;
   for(fixed = 0; fixed <= 1; fixed++){
     State *p = S("p"), *q = S("q");
     Fa *init, *reach;
@@ -73,6 +92,11 @@ int main(void){
            FaIntersects(reach, AtPoint("bad")) ? "true " : "false",
            FaIntersects(reach, AtPoint("bad")) ? "VIOLATED (g can read f's stale local)" : "HOLDS");
     printf("              EF ok  = %s\n", FaIntersects(reach, AtPoint("ok")) ? "true" : "false");
+    for(k = WINDOW_AUTO; k <= 2; k += 3){        /* k = auto (1), then 2 (every upper stack fits) */
+      printf("  window k = %s\n", k < 0 ? "auto" : "2");
+      for(i = 0; i < NLTL; i++) printf("    LTL %-32s %s\n", LTL[i], LtlCheck(init, upds, k, LTL[i]) == 1 ? "holds" : "VIOLATED");
+      for(i = 0; i < NCTL; i++) printf("    CTL %-32s %s\n", CTL[i], CtlCheck(init, upds, k, CTL[i]) == 1 ? "holds" : "VIOLATED");
+    }
   }
   return 0;
 }

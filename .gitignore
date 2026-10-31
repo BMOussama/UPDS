@@ -4,5 +4,6 @@ paper_example
 pre_example
 run_case
 stale_example
+mc_case
 __pycache__/
 -fsanitize=address
